@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>TRIADA — Internal Platform</title>
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --card-bg: #141414;
+      --border: #222222;
+      --text-main: #ffffff;
+      --text-muted: #888888;
+      --accent-red: #ff4d4d;
+      --accent-green: #2ecc71;
+      --accent-purple: #6c5ce7;
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font); -webkit-tap-highlight-color: transparent; }
+    body { background-color: var(--bg); color: var(--text-main); overflow-x: hidden; }
+
+    /* PRELOADER SCREEN */
+    #preloader {
+      position: fixed; inset: 0; background: #080808;
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      z-index: 99999; padding: 20px; gap: 30px;
+    }
+    .brand-title {
+      font-size: clamp(2.5rem, 10vw, 4.5rem); font-weight: 900; letter-spacing: 0.4em; text-transform: uppercase;
+      animation: pulse 1.8s infinite ease-in-out; text-align: center;
+    }
+    @keyframes pulse {
+      0% { opacity: 0.2; transform: scale(0.97); }
+      50% { opacity: 1; transform: scale(1.03); filter: drop-shadow(0 0 20px rgba(255,255,255,0.3)); }
+      100% { opacity: 0.2; transform: scale(0.97); }
+    }
+
+    .btn-start {
+      background: transparent; border: 1px solid var(--text-main); color: var(--text-main);
+      padding: 14px 32px; font-size: 0.9rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.2em; cursor: pointer; transition: all 0.3s ease; border-radius: 4px;
+      width: auto; max-width: 250px; margin-bottom: 0; position: relative; z-index: 100000;
+    }
+    .btn-start:hover {
+      background: var(--text-main); color: #000; box-shadow: 0 0 15px rgba(255,255,255,0.2);
+    }
+    .btn-start:active { transform: scale(0.96); }
+
+    /* MAIN APP STYLES */
+    #app { 
+      display: none; 
+      min-height: 100vh; 
+      padding: 20px 15px 40px 15px; 
+    }
+    
+    header {
+      display: flex; flex-direction: column; gap: 15px;
+      padding-bottom: 20px; border-bottom: 1px solid var(--border); margin-bottom: 25px;
+    }
+    .logo { font-size: 1.4rem; font-weight: 800; letter-spacing: 0.2em; text-align: center; }
+    
+    nav { 
+      display: flex; 
+      gap: 8px; 
+      overflow-x: auto; 
+      width: 100%; 
+      padding-bottom: 5px; 
+      scrollbar-width: none; 
+    }
+    nav::-webkit-scrollbar { display: none; }
+    
+    .nav-btn {
+      flex: 1 0 auto;
+      background: transparent; border: 1px solid var(--border); color: var(--text-muted);
+      padding: 10px 16px; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.08em;
+      cursor: pointer; transition: 0.3s; white-space: nowrap; text-align: center;
+    }
+    .nav-btn:hover, .nav-btn.active { color: var(--text-main); border-color: var(--text-main); background: var(--card-bg); }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* UI CARDS & TABLES */
+    .grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
+    @media (min-width: 768px) {
+      .grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+      header { flex-direction: row; justify-content: space-between; align-items: center; }
+      .logo { text-align: left; }
+      #app { padding: 30px; }
+    }
+
+    .card { background: var(--card-bg); border: 1px solid var(--border); padding: 20px; position: relative; border-radius: 4px; }
+    .card-title { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+    .card-value { font-size: 2rem; font-weight: 700; word-break: break-word; }
+
+    input, select, button {
+      width: 100%; padding: 12px; background: #000; border: 1px solid var(--border);
+      color: #fff; margin-bottom: 12px; font-size: 0.9rem; outline: none; border-radius: 4px;
+    }
+    input:focus { border-color: var(--text-main); }
+    .btn-submit { background: var(--text-main); color: #000; font-weight: 700; text-transform: uppercase; cursor: pointer; border: none; }
+    .btn-submit:active { opacity: 0.8; }
+
+    .table-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 300px; }
+    th, td { border-bottom: 1px solid var(--border); padding: 10px 8px; text-align: left; font-size: 0.8rem; }
+    th { color: var(--text-muted); text-transform: uppercase; font-size: 0.65rem; }
+
+    /* MODAL (EMPLOYEE DETAILS) */
+    .modal {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
+      display: none; justify-content: center; align-items: flex-end; z-index: 1000; padding: 0;
+    }
+    @media (min-width: 500px) {
+      .modal { align-items: center; padding: 20px; }
+    }
+
+    .modal-content {
+      background: #0a0a0c; border: 1px solid var(--border); width: 100%; max-width: 450px;
+      padding: 25px 20px; border-radius: 16px 16px 0 0; position: relative;
+      max-height: 90vh; overflow-y: auto;
+    }
+    @media (min-width: 500px) {
+      .modal-content { border-radius: 16px; }
+    }
+
+    .close-modal { position: absolute; top: 15px; right: 20px; cursor: pointer; color: var(--text-muted); font-size: 1.5rem; padding: 5px; }
+    
+    .stat-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.85rem; align-items: center; gap: 10px; }
+    .stat-row input { width: 90px; padding: 6px 8px; margin: 0; text-align: right; font-size: 0.85rem; }
+    .val-minus { color: var(--accent-red); }
+    .val-plus { color: var(--accent-green); }
+
+    .pay-badge {
+      background: var(--accent-purple); color: #fff; text-align: center;
+      padding: 6px 14px; border-radius: 20px; font-size: 0.7rem; font-weight: 700;
+      width: fit-content; margin: 15px auto 8px auto; text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Preloader Screen with Manual Button -->
+  <div id="preloader">
+    <div class="brand-title">TRIADA</div>
+    <button type="button" class="btn-start" id="start-button">Let’s go!!</button>
+  </div>
+
+  <!-- Main Platform -->
+  <div id="app">
+    <header>
+      <div class="logo">TRIADA .</div>
+      <nav>
+        <button class="nav-btn active" onclick="switchTab('finance', event)">Финансы</button>
+        <button class="nav-btn" onclick="switchTab('models', event)">Модели</button>
+        <button class="nav-btn" onclick="switchTab('staff', event)">Сотрудники</button>
+        <button class="nav-btn" onclick="switchTab('stats', event)">Статистика</button>
+      </nav>
+    </header>
+
+    <!-- FINANCE SECTION -->
+    <section id="finance" class="section active">
+      <div class="grid" style="margin-bottom: 15px;">
+        <div class="card">
+          <div class="card-title">Общий Баланс</div>
+          <div class="card-value" id="total-balance">$0.00</div>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Внести операцию</div>
+          <select id="fin-type">
+            <option value="income">Доход (+)</option>
+            <option value="expense">Расход (-)</option>
+          </select>
+          <input type="number" id="fin-amount" placeholder="Сумма ($)">
+          <input type="text" id="fin-note" placeholder="Примечание / От кого">
+          <button class="btn-submit" onclick="addTransaction()">Сохранить</button>
+        </div>
+        <div class="card">
+          <div class="card-title">История операций</div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr><th>Тип</th><th>Сумма</th><th>Примечание</th></tr>
+              </thead>
+              <tbody id="finance-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODELS SECTION -->
+    <section id="models" class="section">
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Добавить модель</div>
+          <input type="text" id="model-name" placeholder="Имя / Псевдоним">
+          <input type="text" id="model-link" placeholder="Ссылка на профиль">
+          <button class="btn-submit" onclick="addModel()">Сохранить профиль</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Список моделей</div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr><th>Имя</th><th>Профиль</th></tr>
+              </thead>
+              <tbody id="models-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STAFF SECTION -->
+    <section id="staff" class="section">
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Добавить сотрудника</div>
+          <input type="text" id="staff-name" placeholder="Никнейм сотрудника">
+          <input type="text" id="staff-role" placeholder="Должность">
+          <button class="btn-submit" onclick="addStaff()">Зарегистрировать</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Штат агентства (Клик для детального расчета)</div>
+          <div id="staff-list" class="grid" style="grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STATS SECTION -->
+    <section id="stats" class="section">
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Выработано (Чистая прибыль)</div>
+          <div class="card-value" id="stat-net" style="color: var(--accent-green);">$0.00</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Всего расходов</div>
+          <div class="card-value" id="stat-expenses" style="color: var(--accent-red);">$0.00</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Моделей в базе</div>
+          <div class="card-value" id="stat-models-count">0</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Сотрудников в штате</div>
+          <div class="card-value" id="stat-staff-count">0</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- EMPLOYEE MODAL -->
+  <div id="employee-modal" class="modal">
+    <div class="modal-content">
+      <span class="close-modal" onclick="closeModal()">&times;</span>
+      <div class="card-title" style="text-align: center; margin-bottom: 5px;">Статистика сотрудника</div>
+      <h2 id="modal-username" style="text-align: center; margin-bottom: 15px; font-size: 1.3rem;">@username</h2>
+
+      <div class="stat-row">
+        <span>Чистая прибыль</span>
+        <input type="number" id="m-profit" value="0" oninput="calcStaffPayout()">
+      </div>
+      <div class="stat-row val-minus">
+        <span>• АВАНСЫ / САЛАРИ</span>
+        <input type="number" id="m-advances" value="0" oninput="calcStaffPayout()">
+      </div>
+      <div class="stat-row val-minus">
+        <span>• ШТРАФЫ / СПИСАНИЯ</span>
+        <input type="number" id="m-fines" value="0" oninput="calcStaffPayout()">
+      </div>
+      <div class="stat-row val-plus">
+        <span>• БОНУСЫ / ПРЕМИИ</span>
+        <input type="number" id="m-bonuses" value="0" oninput="calcStaffPayout()">
+      </div>
+      <div class="stat-row val-minus">
+        <span>• СТАЖИРОВОЧНЫЕ</span>
+        <input type="number" id="m-trainee" value="0" oninput="calcStaffPayout()">
+      </div>
+      <div class="stat-row val-minus">
+        <span>• ВОЗВРАТЫ (КОМИССИЯ)</span>
+        <input type="number" id="m-fee" value="0" oninput="calcStaffPayout()">
+      </div>
+
+      <div class="pay-badge">К выплате</div>
+      <div id="m-total-payout" style="font-size: 1.8rem; font-weight: 800; text-align: center;">$0.00</div>
+    </div>
+  </div>
+
+  <script>
+    // DIRECT EVENT LISTENER FOR RELIABLE CLICK HANDLER
+    document.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('start-button');
+      if (btn) {
+        btn.addEventListener('click', enterApp);
+        btn.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          enterApp();
+        });
+      }
+    });
+
+    function enterApp() {
+      const preloader = document.getElementById('preloader');
+      const app = document.getElementById('app');
+      if (preloader) preloader.style.setProperty('display', 'none', 'important');
+      if (app) app.style.setProperty('display', 'block', 'important');
+    }
+
+    // STATE
+    let state = {
+      transactions: [],
+      models: [],
+      staff: [],
+      activeStaffId: null
+    };
+
+    function switchTab(tabId, event) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      if (event && event.target) {
+        event.target.classList.add('active');
+      }
+      updateStats();
+    }
+
+    // FINANCE LOGIC
+    function addTransaction() {
+      const type = document.getElementById('fin-type').value;
+      const amount = parseFloat(document.getElementById('fin-amount').value);
+      const note = document.getElementById('fin-note').value;
+      if (!amount) return;
+
+      state.transactions.push({ type, amount, note });
+      renderFinance();
+      document.getElementById('fin-amount').value = '';
+      document.getElementById('fin-note').value = '';
+    }
+
+    function renderFinance() {
+      const tbody = document.getElementById('finance-table');
+      tbody.innerHTML = '';
+      let balance = 0;
+
+      state.transactions.forEach(t => {
+        const isInc = t.type === 'income';
+        balance += isInc ? t.amount : -t.amount;
+        tbody.innerHTML += `
+          <tr>
+            <td style="color: ${isInc ? 'var(--accent-green)' : 'var(--accent-red)'}">${isInc ? 'Доход' : 'Расход'}</td>
+            <td>$${t.amount.toFixed(2)}</td>
+            <td>${t.note}</td>
+          </tr>`;
+      });
+      document.getElementById('total-balance').innerText = `$${balance.toFixed(2)}`;
+    }
+
+    // MODELS LOGIC
+    function addModel() {
+      const name = document.getElementById('model-name').value;
+      const link = document.getElementById('model-link').value;
+      if (!name) return;
+
+      state.models.push({ name, link });
+      renderModels();
+      document.getElementById('model-name').value = '';
+      document.getElementById('model-link').value = '';
+    }
+
+    function renderModels() {
+      const tbody = document.getElementById('models-table');
+      tbody.innerHTML = '';
+      state.models.forEach(m => {
+        tbody.innerHTML += `<tr><td>${m.name}</td><td><a href="${m.link}" target="_blank" style="color: var(--text-muted); text-decoration: underline;">${m.link || '—'}</a></td></tr>`;
+      });
+    }
+
+    // STAFF LOGIC
+    function addStaff() {
+      const name = document.getElementById('staff-name').value;
+      const role = document.getElementById('staff-role').value;
+      if (!name) return;
+
+      state.staff.push({
+        id: Date.now(), name, role,
+        profit: 0, advances: 0, fines: 0, bonuses: 0, trainee: 0, fee: 0
+      });
+      renderStaff();
+      document.getElementById('staff-name').value = '';
+      document.getElementById('staff-role').value = '';
+    }
+
+    function renderStaff() {
+      const container = document.getElementById('staff-list');
+      container.innerHTML = '';
+      state.staff.forEach(s => {
+        container.innerHTML += `
+          <div class="card" onclick="openStaffModal(${s.id})" style="cursor:pointer; padding: 15px; text-align: center;">
+            <div class="card-title">${s.role || 'Сотрудник'}</div>
+            <div style="font-weight: 700; font-size: 0.95rem;">${s.name}</div>
+          </div>`;
+      });
+    }
+
+    function openStaffModal(id) {
+      state.activeStaffId = id;
+      const s = state.staff.find(x => x.id === id);
+      document.getElementById('modal-username').innerText = s.name;
+      document.getElementById('m-profit').value = s.profit;
+      document.getElementById('m-advances').value = s.advances;
+      document.getElementById('m-fines').value = s.fines;
+      document.getElementById('m-bonuses').value = s.bonuses;
+      document.getElementById('m-trainee').value = s.trainee;
+      document.getElementById('m-fee').value = s.fee;
+      calcStaffPayout();
+      document.getElementById('employee-modal').style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('employee-modal').style.display = 'none';
+    }
+
+    function calcStaffPayout() {
+      const s = state.staff.find(x => x.id === state.activeStaffId);
+      if (!s) return;
+
+      s.profit = parseFloat(document.getElementById('m-profit').value) || 0;
+      s.advances = parseFloat(document.getElementById('m-advances').value) || 0;
+      s.fines = parseFloat(document.getElementById('m-fines').value) || 0;
+      s.bonuses = parseFloat(document.getElementById('m-bonuses').value) || 0;
+      s.trainee = parseFloat(document.getElementById('m-trainee').value) || 0;
+      s.fee = parseFloat(document.getElementById('m-fee').value) || 0;
+
+      const total = s.profit - s.advances - s.fines + s.bonuses - s.trainee - s.fee;
+      document.getElementById('m-total-payout').innerText = `$${total.toFixed(2)}`;
+    }
+
+    // STATS UPDATE
+    function updateStats() {
+      const net = state.transactions.filter(t => t.type === 'income').reduce((a, b) => a + b.amount, 0);
+      const exp = state.transactions.filter(t => t.type === 'expense').reduce((a, b) => a + b.amount, 0);
+      
+      document.getElementById('stat-net').innerText = `$${net.toFixed(2)}`;
+      document.getElementById('stat-expenses').innerText = `$${exp.toFixed(2)}`;
+      document.getElementById('stat-models-count').innerText = state.models.length;
+      document.getElementById('stat-staff-count').innerText = state.staff.length;
+    }
+  </script>
+</body>
+</html>
